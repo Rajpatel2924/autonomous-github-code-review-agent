@@ -1,198 +1,296 @@
-# Autonomous GitHub Code Review Agent
+# 🚀 Autonomous GitHub Code Review Agent
 
-An AI-powered FastAPI service that reviews GitHub pull requests, retrieves repository
-context with RAG, runs specialized Claude Sonnet review agents, and posts a structured
-Markdown report back to the PR.
+<p align="center">
 
-## Architecture
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-Production-green)
+![Claude](https://img.shields.io/badge/Claude-Sonnet-orange)
+![LangGraph](https://img.shields.io/badge/LangGraph-Agentic_AI-purple)
+![RAG](https://img.shields.io/badge/RAG-ChromaDB-red)
+![GitHub](https://img.shields.io/badge/GitHub-Automation-black)
+![License](https://img.shields.io/badge/License-MIT-brightgreen)
+
+</p>
+
+<p align="center">
+An AI-powered GitHub Pull Request Review System that combines <b>Claude Sonnet</b>, <b>LangGraph</b>, <b>RAG</b>, and <b>GitHub Automation</b> to deliver intelligent code reviews with repository-wide context.
+</p>
+
+---
+
+## ✨ Overview
+
+Manual code reviews are time-consuming and often inconsistent.
+
+This project automatically:
+
+✅ Detects new Pull Requests
+
+✅ Retrieves changed files and repository context
+
+✅ Performs Security Analysis
+
+✅ Detects Performance Bottlenecks
+
+✅ Reviews Code Quality & Maintainability
+
+✅ Generates AI-powered Suggestions
+
+✅ Posts Structured Feedback directly on GitHub
+
+The system leverages Repository-Aware RAG and Claude Sonnet to review code using the context of the entire codebase rather than just the changed files.
+
+---
+
+# 🏗 Architecture
 
 ```text
-GitHub Pull Request Webhook
-          |
-          v
-FastAPI /webhook -> Signature + event validation
-          |
-          v
-GitHubClient -> PR files, metadata, repository structure
-          |
-          v
-ChromaDB RAG -> SentenceTransformer embeddings + relevant code context
-          |
-          v
+Developer Creates PR
+        │
+        ▼
+GitHub Webhook
+        │
+        ▼
+FastAPI Backend
+        │
+        ▼
+GitHub API Client
+        │
+        ▼
+Repository-Aware RAG
+(ChromaDB + Embeddings)
+        │
+        ▼
 LangGraph Workflow
-  START
-    -> Get PR Data
-    -> Retrieve Relevant Code Context
-    -> SecurityAgent / Claude Sonnet
-    -> PerformanceAgent / Claude Sonnet
-    -> CodeQualityAgent / Claude Sonnet
-    -> AggregatorAgent
-    -> Generate Final Review Report
-    -> Post GitHub Comment
-  END
+        │
+ ┌──────┼────────┐
+ ▼      ▼        ▼
+Security  Performance  Quality
+ Agent      Agent      Agent
+        │
+        ▼
+ Aggregator Agent
+        │
+        ▼
+ Claude Sonnet
+        │
+        ▼
+ GitHub Review Comment
 ```
 
-## Features
+---
 
-- GitHub webhook endpoint for `opened`, `reopened`, and `synchronize` PR events
-- Async GitHub REST API client for PR files, metadata, repository trees, and comments
-- Claude Sonnet agents for security, performance, and code quality review
-- Repository-aware RAG using `sentence-transformers/all-MiniLM-L6-v2` and ChromaDB
-- MCP-style tool server exposing PR, search, structure, similar-file, comment, and changed-line tools
-- LangGraph-compatible review workflow with a sequential fallback runner
-- Markdown report with executive summary, findings, suggested fixes, and a 0-100 score
-- Docker, Docker Compose, Railway config, pytest coverage, typed Pydantic models, logging, and retries
+# 🎯 Key Features
 
-## Project Structure
+| Feature               | Description                              |
+| --------------------- | ---------------------------------------- |
+| GitHub Webhooks       | Automatically listens for PR events      |
+| Claude Sonnet Reviews | AI-powered code analysis                 |
+| Repository-Aware RAG  | Understands existing code patterns       |
+| Multi-Agent System    | Security, Performance, Quality reviewers |
+| Automated PR Feedback | Posts comments directly to GitHub        |
+| Code Quality Score    | Generates a 0–100 review score           |
+| Suggested Fixes       | Actionable improvement recommendations   |
+| MCP Tools             | Dynamic tool calling architecture        |
+| Docker Deployment     | Production-ready containerization        |
+| Railway Support       | One-click cloud deployment               |
 
-```text
-app/          FastAPI app, config, webhook parsing, GitHub client, shared models
-agents/       SecurityAgent, PerformanceAgent, CodeQualityAgent, AggregatorAgent
-rag/          Embeddings, Chroma vector store, retriever, repository indexer
-mcp/          MCP-style tool definitions and stdio server
-graph/        LangGraph workflow and typed state
-prompts/      Claude system prompts
-tests/        Unit tests
+---
+
+# 🧠 AI Agent Workflow
+
+```mermaid
+flowchart TD
+
+A[Pull Request Opened]
+--> B[Fetch PR Data]
+
+B --> C[Retrieve Context Using RAG]
+
+C --> D[Security Agent]
+C --> E[Performance Agent]
+C --> F[Code Quality Agent]
+
+D --> G[Aggregator]
+E --> G
+F --> G
+
+G --> H[Generate Report]
+
+H --> I[Post Review Comment]
 ```
 
-## Environment Variables
+---
 
-Copy the example file and fill in production values:
+# 🔍 Example AI Review
 
-```bash
-cp .env.example .env
+## Input
+
+```python
+password = "admin123"
+
+query = f"SELECT * FROM users WHERE id={user_id}"
 ```
 
-| Variable | Description |
-|---|---|
-| `ANTHROPIC_API_KEY` | Claude API key |
-| `ANTHROPIC_MODEL` | Claude model, defaults to `claude-3-5-sonnet-20241022` |
-| `GITHUB_TOKEN` | GitHub token with PR read and issue comment write access |
-| `GITHUB_WEBHOOK_SECRET` | Shared secret for GitHub webhook signature validation |
-| `CHROMA_PATH` | Persistent ChromaDB path |
-| `EMBEDDING_MODEL` | SentenceTransformer model |
-| `LOG_LEVEL` | Python logging level |
-
-## Running Locally
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload --port 8000
-```
-
-Check health:
-
-```bash
-curl http://localhost:8000/health
-```
-
-Open API docs at `http://localhost:8000/docs`.
-
-## Index a Repository
-
-Before reviews, index repository context for better RAG results:
-
-```bash
-curl -X POST http://localhost:8000/reindex \
-  -H "Content-Type: application/json" \
-  -d '{"owner":"octo-org","repo":"example","branch":"main"}'
-```
-
-## GitHub Webhook Setup
-
-1. Create a fine-grained GitHub token with pull request read access and issue comment write access.
-2. Set `GITHUB_TOKEN` and `GITHUB_WEBHOOK_SECRET` in `.env` or Railway variables.
-3. Expose the service with a public URL.
-4. Add a repository webhook:
-   - Payload URL: `https://your-domain.example/webhook`
-   - Content type: `application/json`
-   - Secret: same value as `GITHUB_WEBHOOK_SECRET`
-   - Events: Pull requests
-
-## Example Review Output
+## Output
 
 ```markdown
 # AI Review Report
 
-Overall Score: 87/100
-
-## Executive Summary
-Found 2 actionable issue(s) across security, performance, and maintainability.
+Overall Score: 71/100
 
 ## Security
-Found 1 security issue(s). Highest severity: high.
 
-## Performance
-No performance issues found.
+❌ Hardcoded credential detected
 
-## Code Quality
-Found 1 maintainability issue(s). Highest severity: low.
+❌ Potential SQL Injection vulnerability
 
 ## Suggested Fixes
-- Move secrets to environment variables or a managed secret store.
+
+Use environment variables for secrets.
+
+Use parameterized database queries.
 ```
 
-Patch suggestions are included when Claude returns a `patch` field:
+---
 
-```diff
-- password = "123"
-+ password = os.getenv("PASSWORD")
+# 🛠 Tech Stack
+
+## Backend
+
+* Python 3.12
+* FastAPI
+* Pydantic
+
+## AI & Agents
+
+* Claude Sonnet
+* LangGraph
+* MCP
+
+## RAG
+
+* ChromaDB
+* Sentence Transformers
+* all-MiniLM-L6-v2
+
+## GitHub Integration
+
+* GitHub REST API
+* GitHub Webhooks
+* PyGithub
+
+## Deployment
+
+* Docker
+* Docker Compose
+* Railway
+
+---
+
+# 📂 Project Structure
+
+```text
+github-review-agent/
+
+app/
+agents/
+rag/
+graph/
+mcp/
+prompts/
+tests/
+
+Dockerfile
+docker-compose.yml
+README.md
+requirements.txt
 ```
 
-## MCP Server
+---
 
-Run the lightweight stdio MCP-style server:
+# 🚀 Quick Start
 
 ```bash
-python -m mcp.server
+git clone <repo-url>
+
+cd github-review-agent
+
+python -m venv .venv
+
+source .venv/bin/activate
+
+pip install -r requirements.txt
+
+cp .env.example .env
+
+uvicorn app.main:app --reload
 ```
 
-Available tools:
+---
 
-- `get_pr_files`
-- `search_codebase`
-- `get_repo_structure`
-- `get_similar_files`
-- `post_review_comment`
-- `get_changed_lines`
+# 📊 Sample Review Score
 
-## Docker
+| Category        | Score |
+| --------------- | ----- |
+| Security        | 92    |
+| Performance     | 88    |
+| Maintainability | 90    |
+| Overall         | 90    |
 
-```bash
-docker build -t github-review-agent .
-docker run --env-file .env -p 8000:8000 github-review-agent
-```
+---
 
-Or with Compose:
-
-```bash
-docker compose up --build
-```
-
-## Railway Deployment
-
-1. Create a Railway project from this repository.
-2. Add the environment variables from `.env.example`.
-3. Railway will use `railway.json` and the `Dockerfile`.
-4. Set your GitHub webhook URL to `https://<railway-domain>/webhook`.
-
-## Screenshots
-
-Placeholders:
-
-- GitHub PR review comment screenshot
-- FastAPI docs screenshot
-- Railway deployment dashboard screenshot
-- Chroma indexing logs screenshot
-
-## Testing
+# 🧪 Testing
 
 ```bash
 pytest
 ```
 
-The tests exercise webhook validation, deterministic agent fallbacks, aggregation, and
-RAG chunking without requiring live Anthropic, GitHub, or Chroma credentials.
+---
+
+# 📸 Demo Screenshots
+
+Add screenshots here:
+
+* GitHub PR Comment
+* FastAPI Swagger Docs
+* ChromaDB Indexing Logs
+* Railway Deployment
+
+---
+
+# 🌟 Future Enhancements
+
+* AI-generated Pull Request Summaries
+* Automatic Code Fixes
+* Slack Notifications
+* GitHub Actions Integration
+* Multi-Repository Support
+* Self-Healing Code Suggestions
+
+---
+
+# 👨‍💻 Why This Project Matters
+
+This project demonstrates production-grade experience with:
+
+* Agentic AI
+* Retrieval-Augmented Generation (RAG)
+* LangGraph Workflows
+* MCP Tool Calling
+* Claude Sonnet
+* GitHub Automation
+* Vector Databases
+* Cloud Deployment
+
+It is designed as an AI Engineering portfolio project showcasing modern LLM application architecture.
+
+---
+
+# 📄 License
+
+MIT License
+
+---
+
+⭐ If you found this project useful, consider starring the repository.
