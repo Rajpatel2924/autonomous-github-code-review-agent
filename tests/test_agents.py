@@ -1,8 +1,13 @@
+import pytest
+
+from agents.aggregator_agent import AggregatorAgent
+from agents.security_agent import SecurityAgent
+from app.config import Settings
 from app.models import PullRequestContext, PullRequestFile, Severity
-from app.review_engine import build_report, render_markdown, run_static_review
 
 
-def test_static_review_detects_secret_and_tracks_diff_line() -> None:
+@pytest.mark.asyncio
+async def test_security_agent_detects_secret_and_tracks_diff_line() -> None:
     context = PullRequestContext(
         owner="octo",
         repo="demo",
@@ -17,14 +22,14 @@ def test_static_review_detects_secret_and_tracks_diff_line() -> None:
         ],
     )
 
-    findings = run_static_review(context)
+    review = await SecurityAgent(Settings()).review(context, [])
 
-    assert len(findings) == 1
-    assert findings[0].severity == Severity.high
-    assert findings[0].line == 5
+    assert len(review.findings) == 1
+    assert review.findings[0].severity == Severity.high
+    assert review.findings[0].line == 5
 
 
-def test_report_score_and_markdown() -> None:
+def test_aggregator_score_and_markdown() -> None:
     context = PullRequestContext(
         owner="octo",
         repo="demo",
@@ -38,9 +43,9 @@ def test_report_score_and_markdown() -> None:
             )
         ],
     )
-
-    report = build_report(run_static_review(context))
-    markdown = render_markdown(report)
+    review = SecurityAgent(Settings()).fallback_review(context)
+    report = AggregatorAgent().aggregate([review])
+    markdown = AggregatorAgent().render_markdown(report)
 
     assert report.score == 85
     assert "Possible SQL injection" in markdown
@@ -62,7 +67,7 @@ def test_clean_diff_scores_100() -> None:
         ],
     )
 
-    report = build_report(run_static_review(context))
+    report = AggregatorAgent().aggregate([SecurityAgent(Settings()).fallback_review(context)])
 
     assert report.score == 100
     assert report.findings == []
